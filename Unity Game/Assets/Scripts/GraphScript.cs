@@ -33,6 +33,9 @@ public class GraphParameters
 {
     public int nodeCount;
     public bool isDirected;
+
+    public float nodeRadius;
+    public int nodeBoundary;
     public Boundary bounds;
 
     public BFS_Parameters BFS;
@@ -54,6 +57,7 @@ public class GraphScript : MonoBehaviour {
 
     public void Create_BFS()
     {
+        // Add nodes
         int bound = (int) Mathf.Ceil(Mathf.Sqrt(myParams.nodeCount) 
             * Mathf.Max(myParams.BFS.dispersionFactor, 3.5f));
         for (int n = 0; n < myParams.nodeCount; n++)
@@ -154,6 +158,12 @@ public class GraphScript : MonoBehaviour {
         {
             return false;
         }
+        
+        // Don't add an edge if they're too far apart
+        if ((head.transform.position - tail.transform.position).magnitude > myParams.nodeRadius)
+        {
+            return false;
+        }
 
         // Don't duplicate an edge
         if (tail.PointsTo(head) || head.PointedToBy(tail))
@@ -194,11 +204,12 @@ public class GraphScript : MonoBehaviour {
             wz = (int)Mathf.Round(where.z);
 
         // Check all surrounding 26 positions
-        for (int x = wx - 1; x <= wx + 1; x++)
+        int r = myParams.nodeBoundary;
+        for (int x = wx - r; x <= wx + r; x++)
         {
-            for (int y = wy - 1; y <= wy + 1; y++)
+            for (int y = wy - r; y <= wy + r; y++)
             {
-                for (int z = wz - 1; z <= wz + 1; z++)
+                for (int z = wz - r; z <= wz + r; z++)
                 {
                     // Only check surrounding cube, not the center
                     if (x != wx || y != wy || z != wz)
