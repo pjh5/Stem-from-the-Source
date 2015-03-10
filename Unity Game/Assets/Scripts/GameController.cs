@@ -23,7 +23,8 @@ public class GameController : MonoBehaviour
     void Update()
     {
         // If a click, find the proper node
-        if (Input.GetButtonDown("Fire1"))
+        bool leftClick;
+        if ((leftClick = Input.GetButtonDown("Fire1")) || Input.GetButtonDown("Fire2"))
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit[] hits = Physics.RaycastAll(ray);
@@ -32,9 +33,14 @@ public class GameController : MonoBehaviour
             foreach (RaycastHit hit in hits)
             {
                 if (hit.collider.tag == "Node") {
-
-                    Vector3 hitT = hit.transform.localScale;
-                    hit.transform.localScale = new Vector3(-hitT.x, -hitT.y, hitT.z);
+                    if (leftClick)
+                    {
+                        hit.collider.gameObject.GetComponent<NodeScript>().LeftClick();
+                    }
+                    else
+                    {
+                        hit.collider.gameObject.GetComponent<NodeScript>().RightClick();
+                    }
                 }
             }
 

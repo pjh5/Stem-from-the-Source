@@ -3,12 +3,16 @@ using System.Collections;
 
 public class EdgeScript : MonoBehaviour
 {
+    public Sprite[] sprites;
+    private int state = 0;
 
     // Ends
     private NodeScript head;
     private NodeScript tail;
 
-    private bool isDirected;
+    private int numCrossings = 0;
+
+    private bool isDirected = false;
 
     /// <summary>
     /// Correctly positions, rotates, and scales this node to connect tail and head
@@ -28,6 +32,9 @@ public class EdgeScript : MonoBehaviour
         this.head = head;
         this.isDirected = isDirected;
 
+        // Set proper sprite
+        SetState(state); // default state
+
         // Vector from tail to head.
         Vector3 displacement = head.transform.position - tail.transform.position;
 
@@ -39,13 +46,37 @@ public class EdgeScript : MonoBehaviour
 
         // Correct scale
         this.transform.localScale = new Vector3(1, displacement.magnitude, 1);
+
+        // Count number of crossings
+        RaycastHit[] hits = Physics.RaycastAll(tail.transform.position, displacement, displacement.magnitude);
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider.tag == "Edge")
+            {
+                EdgeScript e = hit.transform.gameObject.GetComponent<EdgeScript>();
+
+                if (!e.IncidentTo(this.GetHead()) && !e.IncidentTo(this.GetTail()))
+                {
+                    this.Cross();
+                    e.Cross();
+                }
+                   
+            }
+        }
+    }
+
+
+    public void SetState(int state)
+    {
+        this.state = state;
+        gameObject.GetComponent<SpriteRenderer>().sprite = sprites[state];
     }
 
     /// <summary>
     /// Returns the node that this edge points to
     /// </summary>
     /// <returns> the node that this edge points to</returns>
-    NodeScript GetHead()
+    public NodeScript GetHead()
     {
         return head;
     }
@@ -54,9 +85,33 @@ public class EdgeScript : MonoBehaviour
     /// Returns the node that this edge points from
     /// </summary>
     /// <returns> the node that this edge points from</returns>
-    NodeScript GetTail()
+    public NodeScript GetTail()
     {
         return tail;
+    }
+
+
+    public bool IncidentTo(NodeScript node)
+    {
+        return GetHead().Equals(node) || GetTail().Equals(node);
+    }
+
+
+    public int NumCrossings()
+    {
+        return numCrossings;
+    }
+
+
+    public void Cross()
+    {
+        numCrossings++;
+    }
+
+
+    public void UnCross()
+    {
+        numCrossings--;
     }
 
 }
