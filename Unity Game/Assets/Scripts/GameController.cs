@@ -29,19 +29,33 @@ public class GameController : MonoBehaviour
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit[] hits = Physics.RaycastAll(ray);
             
-            // swap a node we find
+            // if clicked on a node, ignore all edges
+            bool hitNode = false;
             foreach (RaycastHit hit in hits)
             {
-                if (hit.collider.tag == "Node") {
-                    if (leftClick)
-                    {
-                        hit.collider.gameObject.GetComponent<NodeScript>().LeftClick();
-                    }
-                    else
-                    {
-                        hit.collider.gameObject.GetComponent<NodeScript>().RightClick();
-                    }
+                if (hit.collider.gameObject.tag == "Node")
+                {
+                    graph.GetComponent<GraphScript>().Click(hit.collider.gameObject, leftClick);
+                    hitNode = true;
+                    break;
                 }
+            }
+
+            // if no nodes, then try to find an edge
+            bool hitEdge = false;
+            if (!hitNode)
+            {
+                foreach (RaycastHit hit in hits)
+                {
+                    graph.GetComponent<GraphScript>().Click(hit.collider.gameObject, leftClick);
+                    hitEdge = (hit.collider.gameObject.tag == "Edge");
+                }
+            }
+
+            // Still pass the graph a click, even if no object hit
+            if (!hitEdge && !hitNode)
+            {
+                graph.GetComponent<GraphScript>().Click(null, leftClick);
             }
 
         }

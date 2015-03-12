@@ -4,7 +4,7 @@ using System.Collections;
 public class EdgeScript : MonoBehaviour
 {
     public Sprite[] sprites;
-    private int state = 0;
+    public int state = 0;
 
     // Ends
     private NodeScript head;
@@ -12,14 +12,12 @@ public class EdgeScript : MonoBehaviour
 
     private int numCrossings = 0;
 
-    private bool isDirected = false;
-
     /// <summary>
     /// Correctly positions, rotates, and scales this node to connect tail and head
     /// </summary>
     /// <param name="tail"> The tail node</param>
     /// <param name="head"> The head node</param>
-    public void Initialize(NodeScript tail, NodeScript head, bool isDirected)
+    public void Initialize(NodeScript tail, NodeScript head)
     {
         // Destroy ourselves if we've been initialized incorrectly
         if (tail == null || head == null)
@@ -30,10 +28,9 @@ public class EdgeScript : MonoBehaviour
 
         this.tail = tail;
         this.head = head;
-        this.isDirected = isDirected;
 
         // Set proper sprite
-        SetState(state); // default state
+        SetState(0); // default state
 
         // Vector from tail to head.
         Vector3 displacement = head.transform.position - tail.transform.position;
@@ -88,6 +85,17 @@ public class EdgeScript : MonoBehaviour
     public NodeScript GetTail()
     {
         return tail;
+    }
+
+
+    public NodeScript OtherEnd(NodeScript node)
+    {
+        if (node == null || !(node.Equals(GetHead()) || node.Equals(GetTail())))
+        {
+            return null;
+        }
+
+        return (node.Equals(GetHead())) ? GetTail() : GetHead();
     }
 
 

@@ -4,63 +4,26 @@ using System.Collections.Generic;
 
 public class NodeScript : MonoBehaviour {
 
+    public Sprite[] sprites;
+    private int state = 0;
+
     private List<NodeScript> inNeighbors = new List<NodeScript>();
     private List<NodeScript> outNeighbors = new List<NodeScript>();
-
-    private static readonly int NUM_STATES = 4;
-    private int state = 0;
 
     // Manipulated by GraphScript functions
     private int distance = -1;
 
-    // Original Vector
-    private Vector3 baseL;
-
 
     public void Initialize()
     {
-        Vector3 scale = transform.localScale;
-        baseL = new Vector3(scale.x, scale.y, scale.z);
     }
 
-
-    public void LeftClick()
-    {
-        ChangeState(1);
-
-    }
-
-
-    public void RightClick()
-    {
-        ChangeState(-1);
-    }
 
     // Please Generalize This
-    public void ChangeState(int byHowMuch)
+    public void SetState(int state)
     {
-        state = Mathf.RoundToInt(Mathf.Repeat(state + byHowMuch, NUM_STATES));
-
-        // Change image
-        Vector3 newScale = new Vector3(
-            (state > 1) ? -baseL.x : baseL.x, 
-            (state == 1 || state == 2)? -baseL.y : baseL.y, 
-            baseL.z);
-        transform.localScale = newScale;
-
-        // Activate surrounding edges
-        GraphScript graph = GetGraph();
-        foreach (NodeScript nbr in Neighbors())
-        {
-            if (this.state > 0 && nbr.State() > 0)
-            {
-                graph.EdgeBetween(this, nbr).SetState(1);
-            }
-            else
-            {
-                graph.EdgeBetween(this, nbr).SetState(0);
-            }
-        }
+        this.state = state;
+        gameObject.GetComponent<SpriteRenderer>().sprite = sprites[state];
     }
 
 
@@ -104,6 +67,13 @@ public class NodeScript : MonoBehaviour {
     {
         return inNeighbors.Contains(node);
     }
+
+
+    public bool IncidentTo(NodeScript node)
+    {
+        return this.PointsTo(node) || this.PointedToBy(node);
+    }
+
 
     public List<NodeScript> Neighbors()
     {
@@ -170,4 +140,24 @@ public class NodeScript : MonoBehaviour {
     {
         return transform.parent.transform.parent.GetComponent<GraphScript>();
     }
+
+
+    public override bool Equals(System.Object obj)
+    {
+        return obj != null && this.Equals(obj as NodeScript);
+    }
+
+
+    public bool Equals(NodeScript node)
+    {
+        return this.gameObject.Equals(node.gameObject);
+    }
+
+
+    public override int GetHashCode()
+    {
+        Vector3 t = this.gameObject.transform.position;
+        return Mathf.RoundToInt(31*Mathf.Abs(t.x) + 15*Mathf.Abs(t.y) + 7*Mathf.Abs(t.z));
+    }
+
 }

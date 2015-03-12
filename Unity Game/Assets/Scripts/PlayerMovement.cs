@@ -5,7 +5,13 @@ public class PlayerMovement : MonoBehaviour
 {
 
     public float speed;
+    public static Vector3 startingPos;
 
+
+    void Start()
+    {
+        startingPos = Camera.main.transform.position;
+    }
 
     /*
      * Move the Camera based on arrow keys
@@ -27,5 +33,11 @@ public class PlayerMovement : MonoBehaviour
         {
             Camera.main.orthographicSize++;
         }
+    }
+
+
+    public static void FocusOn(GameObject obj) 
+    {
+        Camera.main.transform.position = (obj.transform.position + startingPos);
     }
 }
