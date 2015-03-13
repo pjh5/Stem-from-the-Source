@@ -45,7 +45,7 @@ public class GraphScript : MonoBehaviour {
     private int mode = 0;
 
     // PATH_MODE Variables
-    private List<NodeScript> path;
+    private List<NodeScript> path = new List<NodeScript>();
 
     // Node and edge lists
     private List<NodeScript> nodes = new List<NodeScript>();
@@ -66,10 +66,6 @@ public class GraphScript : MonoBehaviour {
         mode = PATH_MODE;
 
         // Initialize path
-        if (path == null)
-        {
-            path = new List<NodeScript>();
-        }
         if (path.Count == 0)
         {
             path.Add(source);
@@ -83,7 +79,7 @@ public class GraphScript : MonoBehaviour {
         }
 
         // Focus on last node in path
-        PlayerMovement.FocusOn(path[path.Count - 1].gameObject);
+        PlayerMovement.Get().FocusOn(path[path.Count - 1].gameObject);
     }
 
 
@@ -106,8 +102,21 @@ public class GraphScript : MonoBehaviour {
 
     public void AddToPath(GameObject gObj)
     {
-        NodeScript next = null,
-            pathEnd = path[path.Count - 1];
+        if (gObj == null)
+            return;
+
+        // If path is empty, then just add gObj as only element
+        if (path.Count == 0)
+        {
+            if (gObj.tag == "Node")
+            {
+                NodeScript node = gObj.GetComponent<NodeScript>();
+                path.Add(node);
+            }
+            else
+                return;
+        }
+        NodeScript next = null, pathEnd = path[path.Count - 1];
 
         // If edge, find the other side (or null if not incidnet to path end)
         if (gObj.tag == "Edge")
@@ -123,9 +132,7 @@ public class GraphScript : MonoBehaviour {
 
         // Not an edge or node, or not incident to path end
         if (next == null || !next.IncidentTo(pathEnd) || path.Contains(next))
-        {
             return;
-        }
 
         // Color next edge
         EdgeBetween(pathEnd, next).SetState(1);
@@ -135,7 +142,7 @@ public class GraphScript : MonoBehaviour {
         path.Add(next);
 
         // Focus camera on next
-        PlayerMovement.FocusOn(next.gameObject);
+        PlayerMovement.Get().FocusOn(next.gameObject);
     }
 
 
@@ -157,18 +164,25 @@ public class GraphScript : MonoBehaviour {
         EdgeBetween(removed, path[path.Count - 1]).SetState(0);
 
         // Refocus Camera on path end
-        PlayerMovement.FocusOn(path[path.Count - 1].gameObject);
+        PlayerMovement.Get().FocusOn(path[path.Count - 1].gameObject);
     }
 
     /*
      * GETTERS
      */
 
+    public List<NodeScript> GetNodes()
+    {
+        return nodes;
+    }
+
+
     public EdgeScript EdgeBetween(NodeScript n1, NodeScript n2)
     {
         NodePair np = new NodePair(n1, n2);
         return edgeBetween.ContainsKey(np) ? edgeBetween[np] : null;
     }
+
 
 
     /*
@@ -303,7 +317,7 @@ public class GraphScript : MonoBehaviour {
 
         // Calculate the size of the game boundary
         this.bound = Mathf.RoundToInt(Mathf.Ceil(
-            (Mathf.Sqrt(P.N) * (2 * P.nodeMoat + 1)) * Mathf.Max(P.spread, 1)
+            (Mathf.Sqrt(P.N) * (2 * P.nodeMoat + 1)) * Mathf.Max(P.spread, 1) / 2
             ));
 
         // Convert percentages to ints
@@ -321,7 +335,7 @@ public class GraphScript : MonoBehaviour {
         }
     }
 
-    public void Create_BFS()
+    public void MakeGraph()
     {
         ValidateParameters();
 
@@ -373,7 +387,7 @@ public class GraphScript : MonoBehaviour {
         sink = nodes[0];
         foreach (NodeScript node in nodes)
         {
-            float pos = node.transform.position.x + source.transform.position.y;
+            float pos = node.transform.position.x + node.transform.position.y;
             if (pos < source.transform.position.x + source.transform.position.y)
             {
                 source = node;
@@ -383,6 +397,8 @@ public class GraphScript : MonoBehaviour {
                 sink = node;
             }
         }
+        source.SetState(1);
+        sink.SetState(1);
 
         // Initialize to PATH_MODE
         SetToPathMode();
@@ -464,28 +480,20 @@ public class GraphScript : MonoBehaviour {
     {
         // Don't add an edge between null values
         if (tail == null || head == null)
-        {
             return false;
-        }
 
         // Don't add an edge to a node that's already full
         if (maxDeg >= 1 && (tail.Degree() >= maxDeg || head.Degree() >= maxDeg))
-        {
             return false;
-        }
         
         // Don't add an edge if they're too far apart
-        if ((Mathf.Approximately(nodeRadius, MIN_RADIUS) || nodeRadius >= MIN_RADIUS) && 
+        if ((Mathf.Approximately(nodeRadius, MIN_RADIUS) || nodeRadius >= MIN_RADIUS) &&
             (head.transform.position - tail.transform.position).magnitude > nodeRadius)
-        {
             return false;
-        }
 
         // Don't duplicate an edge
         if (tail.PointsTo(head) || tail.PointedToBy(head))
-        {
             return false;
-        }
 
         // Check that this edge won't intersect any other node, and count edge crossings
         int numCrossings = 0;
@@ -494,13 +502,10 @@ public class GraphScript : MonoBehaviour {
         foreach (RaycastHit hit in hits)
         {
             // Don't add an edge if it'll intersect another node
-            if (hit.collider.tag == "Node" 
+            if (hit.collider.tag == "Node"
                 && hit.transform != tail.transform && hit.transform != head.transform
                 && (hit.transform.position - tail.transform.position).magnitude < displacement.magnitude)
-            {
-                // There is a node in between tail and head
                 return false;
-            }
 
             // Watch for crossings if maxCrossings is not -1 (unlimited)
             else if (P.maxCrossings != -1 && hit.collider.tag == "Edge")
@@ -509,21 +514,15 @@ public class GraphScript : MonoBehaviour {
 
                 // Ignore an edge that's being crossed at an endpoint
                 if (edge.IncidentTo(head) || edge.IncidentTo(tail))
-                {
                     continue;
-                }
-                
+
                 // Keep track of this edge's crossings
                 if (++numCrossings > P.maxCrossings)
-                {
                     return false;
-                }
 
                 // Don't cross an edge that's already been crossed too many times
                 if (hit.transform.gameObject.GetComponent<EdgeScript>().NumCrossings() == P.maxCrossings)
-                {
                     return false;
-                }
             }
         }
 

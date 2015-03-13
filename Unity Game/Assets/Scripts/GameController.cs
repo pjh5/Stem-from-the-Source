@@ -10,13 +10,15 @@ public class GameController : MonoBehaviour
     public static readonly int FALSE = 1;
     public static readonly int FAILURE = 1;
 
-    public GameObject graph;
+    public GameObject graphGameObject;
+    private GraphScript graph;
 
     // Use this for initialization
     void Start()
     {
         Screen.showCursor = true;
-        graph.GetComponent<GraphScript>().Create_BFS();
+        graph = graphGameObject.GetComponent<GraphScript>();
+        graph.MakeGraph();
     }
 
     // Update is called once per frame
@@ -30,12 +32,13 @@ public class GameController : MonoBehaviour
             RaycastHit[] hits = Physics.RaycastAll(ray);
             
             // if clicked on a node, ignore all edges
+            // since this click also hit every edge that is incident with this node
             bool hitNode = false;
             foreach (RaycastHit hit in hits)
             {
                 if (hit.collider.gameObject.tag == "Node")
                 {
-                    graph.GetComponent<GraphScript>().Click(hit.collider.gameObject, leftClick);
+                    graph.Click(hit.collider.gameObject, leftClick);
                     hitNode = true;
                     break;
                 }
@@ -47,7 +50,7 @@ public class GameController : MonoBehaviour
             {
                 foreach (RaycastHit hit in hits)
                 {
-                    graph.GetComponent<GraphScript>().Click(hit.collider.gameObject, leftClick);
+                    graph.Click(hit.collider.gameObject, leftClick);
                     hitEdge = (hit.collider.gameObject.tag == "Edge");
                 }
             }
@@ -55,7 +58,7 @@ public class GameController : MonoBehaviour
             // Still pass the graph a click, even if no object hit
             if (!hitEdge && !hitNode)
             {
-                graph.GetComponent<GraphScript>().Click(null, leftClick);
+                graph.Click(null, leftClick);
             }
 
         }
