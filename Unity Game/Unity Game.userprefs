@@ -1,8 +1,9 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\EdgeScript.cs">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\Scripts\StartScreen_GUI.js">
     <Files>
-      <File FileName="Assets\Scripts\EdgeScript.cs" Line="38" Column="3" />
+      <File FileName="Assets\Standard Assets\Scripts\General Scripts\StartScreen_GUI.js" Line="4" Column="15" />
+      <File FileName="Assets\Scripts\StartScreen_GUI.js" Line="6" Column="27" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

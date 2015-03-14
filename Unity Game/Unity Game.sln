@@ -7,6 +7,8 @@ Project("{528308CE-8582-507C-1D8E-1E0145E886B1}") = "Unity Game", "Assembly-CSha
 EndProject
 Project("{528308CE-8582-507C-1D8E-1E0145E886B1}") = "Unity Game", "Assembly-UnityScript-firstpass.unityproj", "{87228867-ED94-722A-DF0D-F105469E6F02}"
 EndProject
+Project("{528308CE-8582-507C-1D8E-1E0145E886B1}") = "Unity Game", "Assembly-UnityScript.unityproj", "{893D34A3-5AA3-428E-6C1D-3B833EC87848}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,11 +27,15 @@ Global
 		{87228867-ED94-722A-DF0D-F105469E6F02}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87228867-ED94-722A-DF0D-F105469E6F02}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87228867-ED94-722A-DF0D-F105469E6F02}.Release|Any CPU.Build.0 = Release|Any CPU
+		{893D34A3-5AA3-428E-6C1D-3B833EC87848}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{893D34A3-5AA3-428E-6C1D-3B833EC87848}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{893D34A3-5AA3-428E-6C1D-3B833EC87848}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{893D34A3-5AA3-428E-6C1D-3B833EC87848}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-														GlobalSection(MonoDevelopProperties) = preSolution
+																			GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Assembly-CSharp.csproj
 		Policies = $0
 		$0.TextStylePolicy = $1
