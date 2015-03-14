@@ -10,20 +10,25 @@ public class GameController : MonoBehaviour
     public static readonly int FALSE = 1;
     public static readonly int FAILURE = 1;
 
-    public GameObject graphGameObject;
-    private GraphScript graph;
+    private static GameController instance;
 
     // Use this for initialization
     void Start()
     {
         Screen.showCursor = true;
-        graph = graphGameObject.GetComponent<GraphScript>();
-        graph.MakeGraph();
+        instance = this.GetComponent<GameController>();
+        GraphScript.Get().MakeGraph();
     }
 
     // Update is called once per frame
     void Update()
     {
+        // Make graph
+        if (Input.GetButtonDown("Jump"))
+        {
+            //GraphScript.Get().MakeGraph();
+        }
+
         // If a click, find the proper node
         bool leftClick;
         if ((leftClick = Input.GetButtonDown("Fire1")) || Input.GetButtonDown("Fire2"))
@@ -38,7 +43,7 @@ public class GameController : MonoBehaviour
             {
                 if (hit.collider.gameObject.tag == "Node")
                 {
-                    graph.Click(hit.collider.gameObject, leftClick);
+                    GraphScript.Get().Click(hit.collider.gameObject, leftClick);
                     hitNode = true;
                     break;
                 }
@@ -50,7 +55,7 @@ public class GameController : MonoBehaviour
             {
                 foreach (RaycastHit hit in hits)
                 {
-                    graph.Click(hit.collider.gameObject, leftClick);
+                    GraphScript.Get().Click(hit.collider.gameObject, leftClick);
                     hitEdge = (hit.collider.gameObject.tag == "Edge");
                 }
             }
@@ -58,9 +63,15 @@ public class GameController : MonoBehaviour
             // Still pass the graph a click, even if no object hit
             if (!hitEdge && !hitNode)
             {
-                graph.Click(null, leftClick);
+                GraphScript.Get().Click(null, leftClick);
             }
 
         }
+    }
+
+
+    public static GameController Get()
+    {
+        return instance;
     }
 }

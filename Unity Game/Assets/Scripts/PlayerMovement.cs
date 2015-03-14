@@ -21,6 +21,20 @@ public class PlayerMovement : MonoBehaviour
         instance = this.GetComponent<PlayerMovement>();
     }
 
+    /**
+     * CASSIE'S CONGRATULATIONS ATTEMPT.
+     */
+    void OnGUI()
+    {
+        GUI.backgroundColor = Color.green;
+        GUI.Window(0, 
+            new Rect(Screen.width - 300, (Screen.height / 2) - 75, 200, 150), 
+            placeholderGUIWindowFunction, 
+            "Path Length: " + GraphScript.Get().PathLength() + "\n"
+            + "Shortest Possible: " + GraphScript.Get().ShortestPathLength());
+    }
+    void placeholderGUIWindowFunction(int n) {}
+
     /*
      * Move the Camera based on arrow keys
      */
@@ -34,10 +48,6 @@ public class PlayerMovement : MonoBehaviour
             float moveVertical = Input.GetAxis("Vertical");
             Vector3 movement = new Vector3(moveHorizontal, moveVertical, 0);
             rigidbody.velocity = movement * speed;
-
-            // Enter
-            if (Input.GetButtonDown("Submit"))
-                Camera.main.orthographicSize--;
         }
         // ESC
         if (Input.GetButtonDown("Cancel"))
@@ -90,7 +100,7 @@ public class PlayerMovement : MonoBehaviour
         transform.position = new Vector3((left + right) / 2, (top + bottom) / 2, -10);
 
         // Zoom out camera enough
-        Camera.main.orthographicSize = Mathf.Max(Mathf.Abs(left - right) / 2, Mathf.Abs(top - bottom) / 2);
+        Camera.main.orthographicSize = Mathf.Max(Mathf.Abs(left - right) / 2, Mathf.Abs(top - bottom) / 2) + 1;
     }
 
     // singleton method

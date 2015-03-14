@@ -13,6 +13,7 @@ public class Prefabs
 public class GraphParameters
 {
     public int N;
+    public bool isDirected;
 
     public float nodeRadius;
     public int nodeMoat;
@@ -29,6 +30,11 @@ public class GraphParameters
 public class GraphScript : MonoBehaviour {
     private static readonly int MIN_RADIUS = 3;
     private static readonly int PATH_MODE = 0;
+
+    /**
+     * CASSIE'S CONGRATULATIONS ATTEMPT.
+     */
+    public static bool donedonedone = false;
 
     // Public Parameters
     public Prefabs myPrefabs;
@@ -51,10 +57,12 @@ public class GraphScript : MonoBehaviour {
     private List<NodeScript> nodes = new List<NodeScript>();
     private List<EdgeScript> edges = new List<EdgeScript>();
 
-    /// <summary>
-    /// Map from a position vector to the node at that point </summary>
+    // Maps
     private Dictionary<Vector3, NodeScript> nodeMap = new Dictionary<Vector3, NodeScript>();
     private Dictionary<NodePair, EdgeScript> edgeBetween = new Dictionary<NodePair, EdgeScript>();
+
+    // Instance for singleton pattern
+    private static GraphScript instance;
 
 
     /*
@@ -85,7 +93,6 @@ public class GraphScript : MonoBehaviour {
 
     public void Click(GameObject gObj, bool left)
     {
-
         if (mode == PATH_MODE)
         {
             if (left)
@@ -145,7 +152,6 @@ public class GraphScript : MonoBehaviour {
         PlayerMovement.Get().FocusOn(next.gameObject);
     }
 
-
     public void BacktrackPath()
     {
         if (path.Count == 1)
@@ -157,7 +163,8 @@ public class GraphScript : MonoBehaviour {
         NodeScript removed = path[path.Count - 1];
 
         // Remove last node
-        removed.SetState(0);
+        if (!removed.Equals(sink))
+            removed.SetState(0);
         path.RemoveAt(path.Count - 1);
 
         // Uncolor last edge
@@ -170,6 +177,12 @@ public class GraphScript : MonoBehaviour {
     /*
      * GETTERS
      */
+
+    public static GraphScript Get()
+    {
+        return instance;
+    }
+
 
     public List<NodeScript> GetNodes()
     {
@@ -184,34 +197,51 @@ public class GraphScript : MonoBehaviour {
     }
 
 
+    public int PathLength()
+    {
+        return InPathMode() ? path.Count - 1 : 0;
+    }
+
+
+    public int ShortestPathLength()
+    {
+        return InPathMode() ? DistanceBetween(source, sink) : -1;
+    }
+
+
+    public bool InPathMode()
+    {
+        return mode == PATH_MODE;
+    }
+
+
+    public bool IsDirected()
+    {
+        return P.isDirected;
+    }
+
+
+    public bool PathFinished()
+    {
+        return InPathMode() && path.Contains(sink);
+    }
+
 
     /*
      * GRAPH ALGORITHIMS
      */
 
-    // DELETE THIS and remove distances from NodeScript
-    public void SetNodeDistancesFrom(NodeScript source)
+    void Start()
     {
-        Queue<NodeScript> queue = new Queue<NodeScript>();
-        queue.Enqueue(source);
-        source.SetDistance(0);
-
-        // BFS
-        while (queue.Count > 0)
-        {
-            NodeScript node = queue.Dequeue();
-            foreach (NodeScript nbr in node.Neighbors())
-            {
-                if (nbr.Distance() < 0)
-                {
-                    nbr.SetDistance(node.Distance() + 1);
-                    queue.Enqueue(nbr);
-                }
-            }
-        }
+        instance = this.GetComponent<GraphScript>();
     }
 
 
+    /// <summary>
+    /// Returns a list mapping a node to its distance from source, where -1 = inf
+    /// </summary>
+    /// <param name="source"></param>
+    /// <returns></returns>
     public Dictionary<NodeScript, int> DistancesFrom(NodeScript source)
     {
         // Initialize Distances Map
@@ -286,24 +316,9 @@ public class GraphScript : MonoBehaviour {
         return paths;
     }
 
-
-    public void ColorForBFS()
+    public int DistanceBetween(NodeScript source, NodeScript sink)
     {
-        foreach (EdgeScript e in edges)
-        {
-            int diff = e.GetTail().Distance() - e.GetHead().Distance();
-
-            if (diff == 0)
-            {
-                e.SetState(0);
-            }
-            else
-            {
-                NodeScript first = (e.GetTail().Distance() < e.GetHead().Distance()) 
-                    ? e.GetTail() : e.GetHead();
-                e.SetState((first.Distance() % 2 == 0) ? 1 : 2);
-            }
-        }
+        return DistancesFrom(source)[sink];
     }
 
     /*
@@ -338,6 +353,7 @@ public class GraphScript : MonoBehaviour {
     public void MakeGraph()
     {
         ValidateParameters();
+        ClearGraph();
 
         // Add all nodes
         for (int n = 0; n < P.N; n++)
@@ -353,6 +369,7 @@ public class GraphScript : MonoBehaviour {
                     numTries = 0;
                 }
 
+                // Pick a random place to put the node
                 int x = Mathf.RoundToInt(Random.Range(-bound, bound));
                 int y = Mathf.RoundToInt(Random.Range(-bound, bound));
 
@@ -404,8 +421,6 @@ public class GraphScript : MonoBehaviour {
         SetToPathMode();
 
         // TEST BFS CODE
-        SetNodeDistancesFrom(source);
-        //ColorForBFS();
     }
 
     /// <summary>
@@ -421,17 +436,22 @@ public class GraphScript : MonoBehaviour {
     {
         // Don't add anything if there's already a node there
         if (nodeMap.ContainsKey(where) || !IsValidPosition(where))
-        {
             return GameController.FAILURE;
-        }
 
+        // Make node
         NodeScript node = ((GameObject)Instantiate(myPrefabs.node, where, Quaternion.identity))
             .GetComponent<NodeScript>();
         node.transform.parent = this.transform.Find("Nodes");
-        node.Initialize();
 
+        // Give node unique id
+        if (node.Initialize(nodes.Count) == GameController.FAILURE)
+            return GameController.FAILURE;
+
+        // Update state to keep track of new node
         nodes.Add(node);
         nodeMap.Add(where, node);
+
+        // Signal success
         return GameController.SUCCESS;
     }
 
@@ -470,6 +490,27 @@ public class GraphScript : MonoBehaviour {
             }
         }
         return possibilities;
+    }
+
+
+    public void ClearGraph()
+    {
+        // Have to manually delete all nodes and edges, cause they have GUIs
+        foreach (NodeScript node in nodes)
+            Destroy(node.gameObject);
+        foreach (EdgeScript edge in edges)
+            Destroy(edge.gameObject);
+        nodes.Clear();
+        edges.Clear();
+
+        // Path variables
+        path.Clear();
+        source = null;
+        sink = null;
+
+       // Maps
+        nodeMap.Clear();
+        edgeBetween.Clear();
     }
 
     /*
@@ -591,7 +632,7 @@ public class GraphScript : MonoBehaviour {
         return Mathf.Approximately(f, Mathf.Round(f));
     }
 
-
+    // Used to map two nodes to the edge between them
     private class NodePair
     {
         public readonly NodeScript n1;

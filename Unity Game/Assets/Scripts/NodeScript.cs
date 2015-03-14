@@ -4,20 +4,35 @@ using System.Collections.Generic;
 
 public class NodeScript : MonoBehaviour {
 
+    // GUI
     public Sprite[] sprites;
     private int state = 0;
 
-    private List<NodeScript> inNeighbors = new List<NodeScript>();
-    private List<NodeScript> outNeighbors = new List<NodeScript>();
+    // Info
+    private List<NodeScript> inNbrs = new List<NodeScript>();
+    private List<NodeScript> outNbrs = new List<NodeScript>();
 
-    // Manipulated by GraphScript functions
-    private int distance = -1;
+    // Index
+    private int index; // better be unique
+    private static List<int> usedIndices = new List<int>();
 
-
-    public void Initialize()
+    public int Initialize(int index)
     {
+        // Prevent duplicate indices
+        if (usedIndices.Contains(index))
+        {
+            Destroy(this.gameObject);
+            return GameController.FAILURE;
+        }
+
+        this.index = index;
+        return GameController.SUCCESS;
     }
 
+    public int Index()
+    {
+        return index;
+    }
 
     // Please Generalize This
     public void SetState(int state)
@@ -26,46 +41,36 @@ public class NodeScript : MonoBehaviour {
         gameObject.GetComponent<SpriteRenderer>().sprite = sprites[state];
     }
 
-
-    public void SetDistance(int distance)
-    {
-        this.distance = distance;
-    }
-
-
+    /// <summary>
+    /// Returns which state the node is in
+    /// </summary>
+    /// <returns>the state of the node</returns>
     public int State()
     {
         return state;
     }
 
-
-    public int Distance()
-    {
-        return distance;
-    }
-
-
+    /// <summary>
+    /// Returns the out degree if directed, total degree otherwise
+    /// </summary>
+    /// <returns>the out degree if directed, total degree otherwise</returns>
     public int Degree()
     {
-        return inNeighbors.Count + outNeighbors.Count;
-    }
-
-
-    public int OutDegree()
-    {
-        return outNeighbors.Count;
+        return GraphScript.Get().IsDirected()? 
+            outNbrs.Count : inNbrs.Count + outNbrs.Count;
     }
 
 
     public bool PointsTo(NodeScript node)
     {
-        return outNeighbors.Contains(node);
+        return GraphScript.Get().IsDirected()? 
+            outNbrs.Contains(node) : outNbrs.Contains(node) || inNbrs.Contains(node);
     }
 
 
     public bool PointedToBy(NodeScript node)
     {
-        return inNeighbors.Contains(node);
+        return inNbrs.Contains(node);
     }
 
 
@@ -78,8 +83,8 @@ public class NodeScript : MonoBehaviour {
     public List<NodeScript> Neighbors()
     {
         List<NodeScript> neighbors = new List<NodeScript>();
-        neighbors.AddRange(inNeighbors);
-        neighbors.AddRange(outNeighbors);
+        neighbors.AddRange(inNbrs);
+        neighbors.AddRange(outNbrs);
         return neighbors;
     }
 
@@ -91,12 +96,12 @@ public class NodeScript : MonoBehaviour {
     public int AddOutNeighbor(NodeScript head)
     {
         // Don't allow multiple edges
-        if (head == null || outNeighbors.Contains(head))
+        if (head == null || outNbrs.Contains(head))
         {
             return GameController.FALSE;
         }
 
-        outNeighbors.Add(head);
+        outNbrs.Add(head);
         return GameController.TRUE;
     }
 
@@ -108,12 +113,12 @@ public class NodeScript : MonoBehaviour {
     public int AddInNeighbor(NodeScript tail)
     {
         // Don't allow multiple edges
-        if (tail == null || inNeighbors.Contains(tail))
+        if (tail == null || inNbrs.Contains(tail))
         {
             return GameController.FALSE;
         }
 
-        inNeighbors.Add(tail);
+        inNbrs.Add(tail);
         return GameController.TRUE;
     }
 
@@ -123,7 +128,7 @@ public class NodeScript : MonoBehaviour {
     /// <param name="node">the node to remove from the list of inneighbors</param>
     /// <returns>whether the node was in inneighbors</returns>
     public int RemoveInNeighbor(NodeScript node) {
-        return inNeighbors.Remove(node)? GameController.TRUE : GameController.FALSE;
+        return inNbrs.Remove(node)? GameController.TRUE : GameController.FALSE;
     }
 
     /// <summary>
@@ -132,7 +137,7 @@ public class NodeScript : MonoBehaviour {
     /// <param name="node">the node to remove from the list of outneighbors</param>
     /// <returns>whether the node was in outneighbors</returns>
     public int RemoveOutNeighbor(NodeScript node) {
-        return outNeighbors.Remove(node)? GameController.TRUE : GameController.FALSE;
+        return outNbrs.Remove(node)? GameController.TRUE : GameController.FALSE;
     }
 
 
