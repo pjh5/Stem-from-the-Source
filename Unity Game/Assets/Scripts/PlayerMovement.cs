@@ -21,20 +21,6 @@ public class PlayerMovement : MonoBehaviour
         instance = this.GetComponent<PlayerMovement>();
     }
 
-    /**
-     * CASSIE'S CONGRATULATIONS ATTEMPT.
-     */
-    void OnGUI()
-    {
-        GUI.backgroundColor = Color.green;
-        GUI.Window(0, 
-            new Rect(Screen.width - 300, (Screen.height / 2) - 75, 200, 150), 
-            placeholderGUIWindowFunction, 
-            "Path Length: " + GraphScript.Get().PathLength() + "\n"
-            + "Shortest Possible: " + GraphScript.Get().ShortestPathLength());
-    }
-    void placeholderGUIWindowFunction(int n) {}
-
     /*
      * Move the Camera based on arrow keys
      */

@@ -17,17 +17,12 @@ public class GameController : MonoBehaviour
     {
         Screen.showCursor = true;
         instance = this.GetComponent<GameController>();
-        GraphScript.Get().MakeGraph();
+        //GraphScript.Get().MakeGraph();
     }
 
     // Update is called once per frame
     void Update()
     {
-        // Make graph
-        if (Input.GetButtonDown("Jump"))
-        {
-            //GraphScript.Get().MakeGraph();
-        }
 
         // If a click, find the proper node
         bool leftClick;
@@ -70,8 +65,8 @@ public class GameController : MonoBehaviour
     }
 
 
-    public static GameController Get()
+    private void ProcessPathComplete()
     {
-        return instance;
+
     }
 }

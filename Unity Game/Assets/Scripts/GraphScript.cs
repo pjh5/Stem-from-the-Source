@@ -13,11 +13,11 @@ public class Prefabs
 public class GraphParameters
 {
     public int N;
-    public bool isDirected;
 
-    public float nodeRadius;
-    public int nodeMoat;
-    public int spread;
+    public float nodeRadius; // how far nodes can connect
+    public int nodeMoat; // distance between nodes
+    public int spread; // space between nodes
+    public float aspectRatio; // width / height
 
     // between 0 and 1 as percentage
     public float minDeg;
@@ -31,24 +31,17 @@ public class GraphScript : MonoBehaviour {
     private static readonly int MIN_RADIUS = 3;
     private static readonly int PATH_MODE = 0;
 
-    /**
-     * CASSIE'S CONGRATULATIONS ATTEMPT.
-     */
-    public static bool donedonedone = false;
-
     // Public Parameters
     public Prefabs myPrefabs;
     public GraphParameters P;
     
     // Calculated Parameters
     private int bound;
-    private float nodeRadius;
-    private int minDeg;
-    private int maxDeg;
 
     // Graph State Variables
     private NodeScript source, sink;
-    private int mode = 0;
+    private int mode = PATH_MODE;
+    private bool isDirected = false;
 
     // PATH_MODE Variables
     private List<NodeScript> path = new List<NodeScript>();
@@ -217,7 +210,7 @@ public class GraphScript : MonoBehaviour {
 
     public bool IsDirected()
     {
-        return P.isDirected;
+        return isDirected;
     }
 
 
@@ -325,7 +318,7 @@ public class GraphScript : MonoBehaviour {
      * GRAPH CONSTRUCTION METHODS
      */
 
-    public void ValidateParameters()
+    private void ValidateParameters()
     {
         // Make sure nodeMoat makes sense
         P.nodeMoat = (P.nodeMoat < 1) ? 1 : P.nodeMoat;
@@ -334,26 +327,29 @@ public class GraphScript : MonoBehaviour {
         this.bound = Mathf.RoundToInt(Mathf.Ceil(
             (Mathf.Sqrt(P.N) * (2 * P.nodeMoat + 1)) * Mathf.Max(P.spread, 1) / 2
             ));
+        P.aspectRatio = Mathf.Max(1, P.aspectRatio);
 
         // Convert percentages to ints
-        this.nodeRadius = (0f < P.nodeRadius && P.nodeRadius < 1f) ? P.nodeRadius * 2 * bound : P.nodeRadius;
-        this.minDeg = (0f < P.minDeg && P.minDeg < 1f) ? Mathf.RoundToInt(P.minDeg * P.N) : Mathf.RoundToInt(P.minDeg);
-        this.maxDeg = (0f < P.maxDeg && P.maxDeg < 1f) ? Mathf.RoundToInt(P.maxDeg * P.N) : Mathf.RoundToInt(P.maxDeg);
+        P.nodeRadius = (0f < P.nodeRadius && P.nodeRadius < 1f) ? P.nodeRadius * 2 * bound : P.nodeRadius;
+        P.minDeg = (0f < P.minDeg && P.minDeg < 1f) ? Mathf.RoundToInt(P.minDeg * P.N) : Mathf.RoundToInt(P.minDeg);
+        P.maxDeg = (0f < P.maxDeg && P.maxDeg < 1f) ? Mathf.RoundToInt(P.maxDeg * P.N) : Mathf.RoundToInt(P.maxDeg);
 
         // Make sure nodeRadius isn't prohibitively small
-        this.nodeRadius = (nodeRadius > 0) ? Mathf.Max(nodeRadius, MIN_RADIUS) : nodeRadius;
+        P.nodeRadius = (P.nodeRadius > 0) ? Mathf.Max(P.nodeRadius, MIN_RADIUS) : P.nodeRadius;
 
         // Make sure maxDeg > minDeg (by making it unlimited otherwise)
-        if (this.minDeg > this.maxDeg)
+        if (P.minDeg > P.maxDeg)
         {
-            this.maxDeg = -1;
+            P.maxDeg = -1;
         }
     }
 
     public void MakeGraph()
     {
         ValidateParameters();
-        ClearGraph();
+
+        int xbound = Mathf.CeilToInt(bound * Mathf.Sqrt(P.aspectRatio));
+        int ybound = Mathf.CeilToInt(bound / Mathf.Sqrt(P.aspectRatio));
 
         // Add all nodes
         for (int n = 0; n < P.N; n++)
@@ -365,13 +361,14 @@ public class GraphScript : MonoBehaviour {
                 // if it's hard to place the node, make the bounds bigger
                 if (++numTries >= 20)
                 {
-                    bound = Mathf.RoundToInt(1.2f * bound);
+                    xbound = Mathf.RoundToInt(1.2f * xbound);
+                    ybound = Mathf.RoundToInt(1.2f * ybound);
                     numTries = 0;
                 }
 
                 // Pick a random place to put the node
-                int x = Mathf.RoundToInt(Random.Range(-bound, bound));
-                int y = Mathf.RoundToInt(Random.Range(-bound, bound));
+                int x = Mathf.RoundToInt(Random.Range(-xbound, xbound));
+                int y = Mathf.RoundToInt(Random.Range(-ybound, ybound));
 
                 if (IsAdjacentNode(new Vector3(x, y, 0)) == GameController.FALSE)
                 {
@@ -386,9 +383,9 @@ public class GraphScript : MonoBehaviour {
             List<NodeScript> posNbrs = PotentialNeighbors(node);
 
             // Calculate number of neighbors to pick for this node
-            int curMaxDeg = (maxDeg == -1) ? posNbrs.Count : maxDeg + 1;
+            int curMaxDeg = (P.maxDeg == -1) ? posNbrs.Count : Mathf.RoundToInt(P.maxDeg + 1);
             int nNbrs = Mathf.FloorToInt(Mathf.Min(posNbrs.Count, 
-                Random.Range(minDeg, curMaxDeg)));
+                Random.Range(P.minDeg, curMaxDeg)));
 
             // Pick that many random neighbors
             for (int i = 0; i < nNbrs; i++)
@@ -495,11 +492,10 @@ public class GraphScript : MonoBehaviour {
 
     public void ClearGraph()
     {
+
         // Have to manually delete all nodes and edges, cause they have GUIs
-        foreach (NodeScript node in nodes)
-            Destroy(node.gameObject);
-        foreach (EdgeScript edge in edges)
-            Destroy(edge.gameObject);
+        nodes.ForEach((node) => Destroy(node.gameObject));
+        edges.ForEach((edge) => Destroy(edge.gameObject));
         nodes.Clear();
         edges.Clear();
 
@@ -524,12 +520,12 @@ public class GraphScript : MonoBehaviour {
             return false;
 
         // Don't add an edge to a node that's already full
-        if (maxDeg >= 1 && (tail.Degree() >= maxDeg || head.Degree() >= maxDeg))
+        if (P.maxDeg >= 1 && (tail.Degree() >= P.maxDeg || head.Degree() >= P.maxDeg))
             return false;
         
         // Don't add an edge if they're too far apart
-        if ((Mathf.Approximately(nodeRadius, MIN_RADIUS) || nodeRadius >= MIN_RADIUS) &&
-            (head.transform.position - tail.transform.position).magnitude > nodeRadius)
+        if ((Mathf.Approximately(P.nodeRadius, MIN_RADIUS) || P.nodeRadius >= MIN_RADIUS) &&
+            (head.transform.position - tail.transform.position).magnitude > P.nodeRadius)
             return false;
 
         // Don't duplicate an edge

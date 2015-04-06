@@ -51,6 +51,7 @@
      <Compile Include="Assets\Scripts\GraphScript.cs" />
      <Compile Include="Assets\Scripts\NodeScript.cs" />
      <Compile Include="Assets\Scripts\PlayerMovement.cs" />
+     <Compile Include="Assets\Scripts\UpdatePathLength.cs" />
      <None Include="Assets\Standard Assets\Skyboxes\_skybox info.txt" />
  <Reference Include="Assembly-UnityScript-firstpass">
  <HintPath>C:/Users/Hellemn/Documents/GitHub/Stem-from-the-Source/Unity Game/Library/ScriptAssemblies/Assembly-UnityScript-firstpass.dll</HintPath>
