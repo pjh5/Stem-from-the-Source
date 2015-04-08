@@ -46,10 +46,11 @@
 	</Reference>
   </ItemGroup>
   <ItemGroup>
-     <Compile Include="Assets\Scripts\EdgeScript.cs" />
+     <Compile Include="Assets\Scripts\Edge.cs" />
      <Compile Include="Assets\Scripts\GameController.cs" />
-     <Compile Include="Assets\Scripts\GraphScript.cs" />
-     <Compile Include="Assets\Scripts\NodeScript.cs" />
+     <Compile Include="Assets\Scripts\Graph.cs" />
+     <Compile Include="Assets\Scripts\Node.cs" />
+     <Compile Include="Assets\Scripts\Parameters.cs" />
      <Compile Include="Assets\Scripts\PlayerMovement.cs" />
      <Compile Include="Assets\Scripts\UpdatePathLength.cs" />
      <None Include="Assets\Standard Assets\Skyboxes\_skybox info.txt" />

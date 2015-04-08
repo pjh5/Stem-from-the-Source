@@ -13,7 +13,6 @@ public class PlayerMovement : MonoBehaviour
     private bool showingAll = false;
 
     private static PlayerMovement instance;
-    public GameObject graphObj;
 
     void Start()
     {
@@ -52,7 +51,7 @@ public class PlayerMovement : MonoBehaviour
                 lastSize = Camera.main.orthographicSize;
 
                 // Show all
-                ShowAllNodes(graphObj.GetComponent<GraphScript>().GetNodes());
+                ShowAllNodes(Graph.Get().GetNodes());
                 showingAll = true;
             }
         }
@@ -68,11 +67,11 @@ public class PlayerMovement : MonoBehaviour
     }
 
 
-    public void ShowAllNodes(List<NodeScript> nodes)
+    public void ShowAllNodes(List<Node> nodes)
     {
         // Find bounds
         float left = 0f, right = 0f, top = 0f, bottom = 0f;
-        foreach (NodeScript node in nodes) 
+        foreach (Node node in nodes) 
         {
             Vector3 p = node.transform.position;
 
@@ -86,7 +85,7 @@ public class PlayerMovement : MonoBehaviour
         transform.position = new Vector3((left + right) / 2, (top + bottom) / 2, -10);
 
         // Zoom out camera enough
-        Camera.main.orthographicSize = Mathf.Max(Mathf.Abs(left - right) / 2, Mathf.Abs(top - bottom) / 2) + 1;
+        Camera.main.orthographicSize = 1 + Mathf.Min(Mathf.Abs(left - right), Mathf.Abs(top - bottom)) / 2;
     }
 
     // singleton method

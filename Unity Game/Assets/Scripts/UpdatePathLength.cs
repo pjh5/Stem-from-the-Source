@@ -15,7 +15,7 @@ public class UpdatePathLength : MonoBehaviour {
 	// Update is called once per frame
 	void Update () 
     {
-        int length = GraphScript.Get().PathLength();
+        int length = Graph.Get().PathLength();
         text.text = "Path length: " + ((length == -1) ? "--" : length.ToString());
 	}
 }

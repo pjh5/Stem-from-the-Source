@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
+
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 [System.Serializable]
 public class Prefabs
@@ -9,53 +11,46 @@ public class Prefabs
     public GameObject node;
 }
 
-[System.Serializable]
-public class GraphParameters
+
+public class Graph : MonoBehaviour
 {
-    public int N;
-
-    public float nodeRadius; // how far nodes can connect
-    public int nodeMoat; // distance between nodes
-    public int spread; // space between nodes
-    public float aspectRatio; // width / height
-
-    // between 0 and 1 as percentage
-    public float minDeg;
-    public float maxDeg; // -1 for unlimited
-
-    public int maxCrossings; // -1 for unlimited
-}
-
-
-public class GraphScript : MonoBehaviour {
-    private static readonly int MIN_RADIUS = 3;
     private static readonly int PATH_MODE = 0;
+    private bool graphExists = false;
 
     // Public Parameters
     public Prefabs myPrefabs;
-    public GraphParameters P;
-    
+
     // Calculated Parameters
     private int bound;
+    private int N;
+    private int minDeg;
+    private int maxDeg;
+
+    // Aesthetic parameters
+    private int maxCrosses;
+    private int nodeMoat;
+    private float nodeRadius;
+    private int xBound;
+    private int yBound;
 
     // Graph State Variables
-    private NodeScript source, sink;
+    private Node source, sink;
     private int mode = PATH_MODE;
-    private bool isDirected = false;
 
     // PATH_MODE Variables
-    private List<NodeScript> path = new List<NodeScript>();
+    private List<Node> userPath = new List<Node>();
+    private List<Node> fastPath;
 
     // Node and edge lists
-    private List<NodeScript> nodes = new List<NodeScript>();
-    private List<EdgeScript> edges = new List<EdgeScript>();
+    private List<Node> nodes = new List<Node>();
+    private List<Edge> edges = new List<Edge>();
 
     // Maps
-    private Dictionary<Vector3, NodeScript> nodeMap = new Dictionary<Vector3, NodeScript>();
-    private Dictionary<NodePair, EdgeScript> edgeBetween = new Dictionary<NodePair, EdgeScript>();
+    private Dictionary<Vector3, Node> nodeMap = new Dictionary<Vector3, Node>();
+    private Dictionary<NodePair, Edge> edgeBetween = new Dictionary<NodePair, Edge>();
 
     // Instance for singleton pattern
-    private static GraphScript instance;
+    private static Graph instance;
 
 
     /*
@@ -66,21 +61,21 @@ public class GraphScript : MonoBehaviour {
     {
         mode = PATH_MODE;
 
-        // Initialize path
-        if (path.Count == 0)
+        // Initialize userPath
+        if (userPath.Count == 0)
         {
-            path.Add(source);
+            userPath.Add(source);
             source.SetState(1); // left click
         }
 
         // Color Path
-        for (int i = 1; i < path.Count; i++)
+        for (int i = 1; i < userPath.Count; i++)
         {
-            EdgeBetween(path[i - 1], path[i]).SetState(1);
+            EdgeBetween(userPath[i - 1], userPath[i]).SetState(1);
         }
 
-        // Focus on last node in path
-        PlayerMovement.Get().FocusOn(path[path.Count - 1].gameObject);
+        // Focus on last node in userPath
+        PlayerMovement.Get().FocusOn(userPath[userPath.Count - 1].gameObject);
     }
 
 
@@ -105,41 +100,41 @@ public class GraphScript : MonoBehaviour {
         if (gObj == null)
             return;
 
-        // If path is empty, then just add gObj as only element
-        if (path.Count == 0)
+        // If userPath is empty, then just add gObj as only element
+        if (userPath.Count == 0)
         {
             if (gObj.tag == "Node")
             {
-                NodeScript node = gObj.GetComponent<NodeScript>();
-                path.Add(node);
+                Node node = gObj.GetComponent<Node>();
+                userPath.Add(node);
             }
             else
                 return;
         }
-        NodeScript next = null, pathEnd = path[path.Count - 1];
+        Node next = null, pathEnd = userPath[userPath.Count - 1];
 
-        // If edge, find the other side (or null if not incidnet to path end)
+        // If edge, find the other side (or null if not incidnet to userPath end)
         if (gObj.tag == "Edge")
         {
-            EdgeScript edge = gObj.GetComponent<EdgeScript>();
+            Edge edge = gObj.GetComponent<Edge>();
             next = edge.OtherEnd(pathEnd); // null if edge not incident to pathEnd
         }
-        // if node, just check if incident to path end
+        // if node, just check if incident to userPath end
         else if (gObj.tag == "Node")
         {
-            next = gObj.GetComponent<NodeScript>();
+            next = gObj.GetComponent<Node>();
         }
 
-        // Not an edge or node, or not incident to path end
-        if (next == null || !next.IncidentTo(pathEnd) || path.Contains(next))
+        // Not an edge or node, or not incident to userPath end
+        if (next == null || !next.IncidentTo(pathEnd) || userPath.Contains(next))
             return;
 
         // Color next edge
         EdgeBetween(pathEnd, next).SetState(1);
 
-        // Add next to path 
+        // Add next to userPath 
         next.SetState(1);
-        path.Add(next);
+        userPath.Add(next);
 
         // Focus camera on next
         PlayerMovement.Get().FocusOn(next.gameObject);
@@ -147,43 +142,43 @@ public class GraphScript : MonoBehaviour {
 
     public void BacktrackPath()
     {
-        if (path.Count == 1)
+        if (userPath.Count == 1)
         {
             return;
         }
 
         // Save last node
-        NodeScript removed = path[path.Count - 1];
+        Node removed = userPath[userPath.Count - 1];
 
         // Remove last node
         if (!removed.Equals(sink))
             removed.SetState(0);
-        path.RemoveAt(path.Count - 1);
+        userPath.RemoveAt(userPath.Count - 1);
 
         // Uncolor last edge
-        EdgeBetween(removed, path[path.Count - 1]).SetState(0);
+        EdgeBetween(removed, userPath[userPath.Count - 1]).SetState(0);
 
-        // Refocus Camera on path end
-        PlayerMovement.Get().FocusOn(path[path.Count - 1].gameObject);
+        // Refocus Camera on userPath end
+        PlayerMovement.Get().FocusOn(userPath[userPath.Count - 1].gameObject);
     }
 
     /*
      * GETTERS
      */
 
-    public static GraphScript Get()
+    public static Graph Get()
     {
         return instance;
     }
 
 
-    public List<NodeScript> GetNodes()
+    public List<Node> GetNodes()
     {
         return nodes;
     }
 
 
-    public EdgeScript EdgeBetween(NodeScript n1, NodeScript n2)
+    public Edge EdgeBetween(Node n1, Node n2)
     {
         NodePair np = new NodePair(n1, n2);
         return edgeBetween.ContainsKey(np) ? edgeBetween[np] : null;
@@ -192,13 +187,7 @@ public class GraphScript : MonoBehaviour {
 
     public int PathLength()
     {
-        return InPathMode() ? path.Count - 1 : 0;
-    }
-
-
-    public int ShortestPathLength()
-    {
-        return InPathMode() ? DistanceBetween(source, sink) : -1;
+        return InPathMode() ? userPath.Count - 1 : 0;
     }
 
 
@@ -208,17 +197,16 @@ public class GraphScript : MonoBehaviour {
     }
 
 
-    public bool IsDirected()
-    {
-        return isDirected;
-    }
-
-
     public bool PathFinished()
     {
-        return InPathMode() && path.Contains(sink);
+        return InPathMode() && userPath.Count > 0 && userPath[userPath.Count - 1].Equals(sink);
     }
 
+
+    public bool Exists()
+    {
+        return graphExists;
+    }
 
     /*
      * GRAPH ALGORITHIMS
@@ -226,7 +214,7 @@ public class GraphScript : MonoBehaviour {
 
     void Start()
     {
-        instance = this.GetComponent<GraphScript>();
+        instance = this.GetComponent<Graph>();
     }
 
 
@@ -235,140 +223,105 @@ public class GraphScript : MonoBehaviour {
     /// </summary>
     /// <param name="source"></param>
     /// <returns></returns>
-    public Dictionary<NodeScript, int> DistancesFrom(NodeScript source)
+    private void RunBFS()
     {
-        // Initialize Distances Map
-        Dictionary<NodeScript, int> distances = new Dictionary<NodeScript, int>();
-        foreach (NodeScript node in nodes)
-        {
-            distances.Add(node, -1);
-        }
-
         // Set up queue
-        Queue<NodeScript> queue = new Queue<NodeScript>();
+        Queue<Node> queue = new Queue<Node>();
         queue.Enqueue(source);
-        distances[source] = 0;
+        source.SetDistance(0);
 
         // BFS
         while (queue.Count > 0)
         {
-            NodeScript node = queue.Dequeue();
-            foreach (NodeScript nbr in node.Neighbors())
+            Node node = queue.Dequeue();
+            int dist = node.GetDistance() + 1;
+
+            foreach (Node nbr in node.Neighbors())
             {
-                if (distances[nbr] == -1)
+                if (nbr.GetDistance() == -1)
                 {
-                    distances[nbr] = distances[node] + 1;
+                    nbr.SetDistance(dist);
                     queue.Enqueue(nbr);
                 }
             }
         }
-        return distances;
+
+        // Set fast path
+        FindFastPath();
     }
 
-
-    public List<List<NodeScript>> ShortestPathsBetween(NodeScript source, NodeScript sink)
+    public List<Node> GetFastestPath()
     {
-        List<List<NodeScript>> paths = new List<List<NodeScript>>();
-        Dictionary<NodeScript, int> distances = DistancesFrom(source);
+        return fastPath;
+    }
 
-        // Initialize a path
-        List<NodeScript> p = new List<NodeScript>();
-        p.Add(sink);
-        paths.Add(p);
+    public void FindFastPath()
+    {
+        List<Node> path = new List<Node>();
+        path.Add(sink);
 
-        // Search through neighbors
-        for (int d = distances[sink] - 1; d >= 0; d--)
+        Node last = sink;
+        while (last != source)
         {
-            for (int i = paths.Count - 1; i >= 0; i-- )
+            IEnumerable<Node> rands = last.Neighbors().OrderBy(i => Random.value);
+            foreach (Node nbr in rands)
             {
-
-                // Add a new path for every neighbor 1 before closest
-                List<NodeScript> path = paths[i];
-                NodeScript closest = path[path.Count - 1];
-                foreach (NodeScript nbr in closest.Neighbors())
+                if (nbr.GetDistance() < last.GetDistance())
                 {
-                    if (distances[nbr] == d)
-                    {
-                        List<NodeScript> pathCopy = new List<NodeScript>(path);
-                        path.Add(nbr);
-                        paths.Add(pathCopy);
-                    }
+                    last = nbr;
+                    path.Add(nbr);
+                    break;
                 }
-
-                // remove old path (too short)
-                paths.RemoveAt(i);
             }
         }
 
-        // reverse all paths
-        foreach (List<NodeScript> path in paths)
-        {
-            path.Reverse();
-        }
-
-        return paths;
+        fastPath = path;
     }
 
-    public int DistanceBetween(NodeScript source, NodeScript sink)
+    public int GetShortestDistance()
     {
-        return DistancesFrom(source)[sink];
+        return sink.GetDistance();
     }
 
     /*
      * GRAPH CONSTRUCTION METHODS
      */
 
-    private void ValidateParameters()
+    public void Initialize(Parameters p)
     {
-        // Make sure nodeMoat makes sense
-        P.nodeMoat = (P.nodeMoat < 1) ? 1 : P.nodeMoat;
+        if (graphExists) return;
 
-        // Calculate the size of the game boundary
-        this.bound = Mathf.RoundToInt(Mathf.Ceil(
-            (Mathf.Sqrt(P.N) * (2 * P.nodeMoat + 1)) * Mathf.Max(P.spread, 1) / 2
-            ));
-        P.aspectRatio = Mathf.Max(1, P.aspectRatio);
+        this.N = p.GetNumNodes();
+        this.minDeg = p.GetMinDegree();
+        this.maxDeg = p.GetMaxDegree();
 
-        // Convert percentages to ints
-        P.nodeRadius = (0f < P.nodeRadius && P.nodeRadius < 1f) ? P.nodeRadius * 2 * bound : P.nodeRadius;
-        P.minDeg = (0f < P.minDeg && P.minDeg < 1f) ? Mathf.RoundToInt(P.minDeg * P.N) : Mathf.RoundToInt(P.minDeg);
-        P.maxDeg = (0f < P.maxDeg && P.maxDeg < 1f) ? Mathf.RoundToInt(P.maxDeg * P.N) : Mathf.RoundToInt(P.maxDeg);
+        // Aesthetics
+        this.maxCrosses = p.GetMaxCrosses();
+        this.nodeMoat = p.GetNodeMoat();
+        this.nodeRadius = p.GetNodeRadius();
+        this.xBound = p.GetxBound();
+        this.yBound = p.GetyBound();
 
-        // Make sure nodeRadius isn't prohibitively small
-        P.nodeRadius = (P.nodeRadius > 0) ? Mathf.Max(P.nodeRadius, MIN_RADIUS) : P.nodeRadius;
-
-        // Make sure maxDeg > minDeg (by making it unlimited otherwise)
-        if (P.minDeg > P.maxDeg)
-        {
-            P.maxDeg = -1;
-        }
+        // Canvas hacking
+        RectTransform rt = gameObject.GetComponent<RectTransform>();
+        rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, xBound);
+        rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, yBound);
     }
 
     public void MakeGraph()
     {
-        ValidateParameters();
-
-        int xbound = Mathf.CeilToInt(bound * Mathf.Sqrt(P.aspectRatio));
-        int ybound = Mathf.CeilToInt(bound / Mathf.Sqrt(P.aspectRatio));
+        // Don't mess things up
+        if (graphExists) return;
 
         // Add all nodes
-        for (int n = 0; n < P.N; n++)
+        for (int n = 0; n < N; n++)
         {
-            int numTries = 0;
             bool added = false;
             while (!added)
             {
-                // if it's hard to place the node, make the bounds bigger
-                if (++numTries >= 20)
-                {
-                    xbound = Mathf.RoundToInt(1.2f * xbound);
-                    ybound = Mathf.RoundToInt(1.2f * ybound);
-                    numTries = 0;
-                }
-
                 // Pick a random place to put the node
-                int x = Mathf.RoundToInt(Random.Range(-xbound, xbound));
-                int y = Mathf.RoundToInt(Random.Range(-ybound, ybound));
+                int x = Random.Range(0, xBound);
+                int y = Random.Range(0, yBound);
 
                 if (IsAdjacentNode(new Vector3(x, y, 0)) == GameController.FALSE)
                 {
@@ -378,17 +331,14 @@ public class GraphScript : MonoBehaviour {
         }
 
         // Add edges
-        foreach (NodeScript node in nodes)
+        foreach (Node node in nodes)
         {
-            List<NodeScript> posNbrs = PotentialNeighbors(node);
-
-            // Calculate number of neighbors to pick for this node
-            int curMaxDeg = (P.maxDeg == -1) ? posNbrs.Count : Mathf.RoundToInt(P.maxDeg + 1);
-            int nNbrs = Mathf.FloorToInt(Mathf.Min(posNbrs.Count, 
-                Random.Range(P.minDeg, curMaxDeg)));
+            List<Node> posNbrs = PotentialNeighbors(node);
 
             // Pick that many random neighbors
-            for (int i = 0; i < nNbrs; i++)
+            int curMax = Mathf.Min(posNbrs.Count, maxDeg);
+            int nbrs = Mathf.Min(posNbrs.Count, Random.Range(minDeg, curMax));
+            for (int i = 0; i < nbrs; i++)
             {
                 int choice = Mathf.RoundToInt(Random.Range(0, posNbrs.Count));
                 AddEdge(node, posNbrs[choice]);
@@ -399,7 +349,7 @@ public class GraphScript : MonoBehaviour {
         // Choose start and ending nodes
         source = nodes[0];
         sink = nodes[0];
-        foreach (NodeScript node in nodes)
+        foreach (Node node in nodes)
         {
             float pos = node.transform.position.x + node.transform.position.y;
             if (pos < source.transform.position.x + source.transform.position.y)
@@ -416,8 +366,9 @@ public class GraphScript : MonoBehaviour {
 
         // Initialize to PATH_MODE
         SetToPathMode();
+        RunBFS();
 
-        // TEST BFS CODE
+        graphExists = true;
     }
 
     /// <summary>
@@ -436,13 +387,9 @@ public class GraphScript : MonoBehaviour {
             return GameController.FAILURE;
 
         // Make node
-        NodeScript node = ((GameObject)Instantiate(myPrefabs.node, where, Quaternion.identity))
-            .GetComponent<NodeScript>();
+        Node node = ((GameObject)Instantiate(myPrefabs.node, where, Quaternion.identity))
+            .GetComponent<Node>();
         node.transform.parent = this.transform.Find("Nodes");
-
-        // Give node unique id
-        if (node.Initialize(nodes.Count) == GameController.FAILURE)
-            return GameController.FAILURE;
 
         // Update state to keep track of new node
         nodes.Add(node);
@@ -458,16 +405,16 @@ public class GraphScript : MonoBehaviour {
     /// <param name="tail"></param>
     /// <param name="head"></param>
     /// <returns></returns>
-    private int AddEdge(NodeScript tail, NodeScript head)
+    private int AddEdge(Node tail, Node head)
     {
         // Make the edge
-        EdgeScript edge = ((GameObject)Instantiate(myPrefabs.edge)).GetComponent<EdgeScript>();
+        Edge edge = ((GameObject)Instantiate(myPrefabs.edge)).GetComponent<Edge>();
         edge.transform.parent = this.transform.Find("Edges");
         edge.Initialize(tail, head);
 
         // Register edge with its ends
-        tail.AddOutNeighbor(head);
-        head.AddInNeighbor(tail);
+        tail.AddNeighbor(head);
+        head.AddNeighbor(tail);
         edges.Add(edge);
 
         // Keep track of edge in map
@@ -478,11 +425,13 @@ public class GraphScript : MonoBehaviour {
     }
 
 
-    private List<NodeScript> PotentialNeighbors(NodeScript node)
+    private List<Node> PotentialNeighbors(Node node)
     {
-        List<NodeScript> possibilities = new List<NodeScript>();
-        foreach (NodeScript nbr in nodes) {
-            if (!nbr.Equals(node) && CanAddEdgeBetween(node, nbr)) {
+        List<Node> possibilities = new List<Node>();
+        foreach (Node nbr in nodes)
+        {
+            if (CanAddEdgeBetween(node, nbr))
+            {
                 possibilities.Add(nbr);
             }
         }
@@ -492,7 +441,6 @@ public class GraphScript : MonoBehaviour {
 
     public void ClearGraph()
     {
-
         // Have to manually delete all nodes and edges, cause they have GUIs
         nodes.ForEach((node) => Destroy(node.gameObject));
         edges.ForEach((edge) => Destroy(edge.gameObject));
@@ -500,36 +448,37 @@ public class GraphScript : MonoBehaviour {
         edges.Clear();
 
         // Path variables
-        path.Clear();
+        userPath.Clear();
         source = null;
         sink = null;
 
-       // Maps
+        // Maps
         nodeMap.Clear();
         edgeBetween.Clear();
+
+        graphExists = false;
     }
 
     /*
      * METHODS FOR VALID NODE AND EDGE PLACEMENT
      */
 
-    private bool CanAddEdgeBetween(NodeScript tail, NodeScript head)
+    private bool CanAddEdgeBetween(Node tail, Node head)
     {
         // Don't add an edge between null values
-        if (tail == null || head == null)
+        if (tail.Equals(head))
             return false;
 
         // Don't add an edge to a node that's already full
-        if (P.maxDeg >= 1 && (tail.Degree() >= P.maxDeg || head.Degree() >= P.maxDeg))
+        if (tail.Degree() >= maxDeg || head.Degree() >= maxDeg)
             return false;
-        
+
         // Don't add an edge if they're too far apart
-        if ((Mathf.Approximately(P.nodeRadius, MIN_RADIUS) || P.nodeRadius >= MIN_RADIUS) &&
-            (head.transform.position - tail.transform.position).magnitude > P.nodeRadius)
+        if ((head.transform.position - tail.transform.position).magnitude > nodeRadius)
             return false;
 
         // Don't duplicate an edge
-        if (tail.PointsTo(head) || tail.PointedToBy(head))
+        if (tail.IncidentTo(head))
             return false;
 
         // Check that this edge won't intersect any other node, and count edge crossings
@@ -545,20 +494,20 @@ public class GraphScript : MonoBehaviour {
                 return false;
 
             // Watch for crossings if maxCrossings is not -1 (unlimited)
-            else if (P.maxCrossings != -1 && hit.collider.tag == "Edge")
+            else if (maxCrosses != -1 && hit.collider.tag == "Edge")
             {
-                EdgeScript edge = hit.transform.gameObject.GetComponent<EdgeScript>();
+                Edge edge = hit.transform.gameObject.GetComponent<Edge>();
 
                 // Ignore an edge that's being crossed at an endpoint
                 if (edge.IncidentTo(head) || edge.IncidentTo(tail))
                     continue;
 
                 // Keep track of this edge's crossings
-                if (++numCrossings > P.maxCrossings)
+                if (++numCrossings > maxCrosses)
                     return false;
 
                 // Don't cross an edge that's already been crossed too many times
-                if (hit.transform.gameObject.GetComponent<EdgeScript>().NumCrossings() == P.maxCrossings)
+                if (hit.transform.gameObject.GetComponent<Edge>().NumCrossings() == maxCrosses)
                     return false;
             }
         }
@@ -578,25 +527,21 @@ public class GraphScript : MonoBehaviour {
         {
             return GameController.ERROR;
         }
-        int wx = (int)Mathf.Round(where.x),
-            wy = (int)Mathf.Round(where.y),
-            wz = (int)Mathf.Round(where.z);
+        int wx = Mathf.RoundToInt(where.x),
+            wy = Mathf.RoundToInt(where.y);
 
         // Check all surrounding 26 positions
-        int r = P.nodeMoat;
+        int r = nodeMoat;
         for (int x = wx - r; x <= wx + r; x++)
         {
             for (int y = wy - r; y <= wy + r; y++)
             {
-                for (int z = wz - r; z <= wz + r; z++)
+                // Only check surrounding cube, not the center
+                if (x != wx || y != wy)
                 {
-                    // Only check surrounding cube, not the center
-                    if (x != wx || y != wy || z != wz)
+                    if (nodeMap.ContainsKey(new Vector3(x, y, 0)))
                     {
-                        if (nodeMap.ContainsKey(new Vector3(x, y, z)))
-                        {
-                            return GameController.TRUE;
-                        }
+                        return GameController.TRUE;
                     }
                 }
             }
@@ -631,10 +576,11 @@ public class GraphScript : MonoBehaviour {
     // Used to map two nodes to the edge between them
     private class NodePair
     {
-        public readonly NodeScript n1;
-        public readonly NodeScript n2;
+        public readonly Node n1;
+        public readonly Node n2;
 
-        public NodePair(NodeScript n1, NodeScript n2) {
+        public NodePair(Node n1, Node n2)
+        {
             this.n1 = n1;
             this.n2 = n2;
         }
@@ -656,7 +602,7 @@ public class GraphScript : MonoBehaviour {
             {
                 return false;
             }
-            return (this.n1.Equals(np.n1) && this.n2.Equals(np.n2)) || 
+            return (this.n1.Equals(np.n1) && this.n2.Equals(np.n2)) ||
                 (this.n1.Equals(np.n2) && this.n2.Equals(np.n1));
         }
 
